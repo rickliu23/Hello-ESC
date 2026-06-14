@@ -258,13 +258,17 @@ uint16_t target_e_com_time_low;
 uint8_t crsf_input_channel = 1;
 char eeprom_layout_version = 2;
 char dir_reversed = 0;
-char comp_pwm = 1;
-char VARIABLE_PWM = 1;
+char comp_pwm = 1; // 互补PWM功能是否启用，即上下桥臂是否使用互补的波形进行控制
+char VARIABLE_PWM = 1; // PWM频率是否可变
 char bi_direction = 0;
 char stuck_rotor_protection = 1; // Turn off for Crawlers
-char brake_on_stop = 0;
+char brake_on_stop = 0;          // 用户参数，决定电机停止时（油门为 0）是刹车还是自由滑行， 1：停止时主动制动
+
+// 堵转保护/防熄火功能，主要用于 低速大扭矩场景，比如攀爬车（crawler）、RC 车等
+// 当电机负载变大、转速下降时，stall_protection 会 自动增加油门/占空比，防止电机因为扭矩不足而停转（堵转）。
 char stall_protection = 0;
-char use_sin_start = 0;
+
+char use_sin_start = 0; // 是一个配置参数，决定是否启用 开环正弦启动 功能
 char TLM_ON_INTERVAL = 0;
 uint8_t telemetry_interval_ms = 30;
 uint8_t TEMPERATURE_LIMIT = 255; // degrees 255 to disable
@@ -310,7 +314,15 @@ const char filename[30] __attribute__((section(".file_name"))) = FILE_NAME;
 
 uint8_t EEPROM_VERSION;
 // move these to targets folder or peripherals for each mcu
+
+// 车模/攀爬车专用模式 的开关
+// 强制双向，车模需要前进/后退
+// 关闭互补 PWM，简化驱动，配合车模刹车逻辑
+// 关闭正弦启动，车模不需要平滑正弦启动
+// 最低占空比提高，低速大扭矩，防止熄火
+// 关闭卡转子保护，车模低速高负载不需要
 char RC_CAR_REVERSE = 0; // have to set bidirectional, comp_pwm off and stall protection off, no sinusoidal startup
+
 uint16_t ADC_CCR = 30;
 uint16_t current_angle = 90;
 uint16_t desired_angle = 90;
@@ -320,8 +332,8 @@ int16_t Speed_pid_output;
 char use_speed_control_loop = 0;
 float input_override = 0;
 int16_t use_current_limit_adjust = 2000;
-char use_current_limit = 0;
-float stall_protection_adjust = 0;
+char use_current_limit = 0;        // 是否启用电流限制
+float stall_protection_adjust = 0; // 是堵转保护功能里的油门补偿量，作用是在电机转速过低时 自动加大占空比，防止电机熄火/堵转
 
 uint32_t MCU_Id = 0;
 uint32_t REV_Id = 0;
@@ -329,7 +341,11 @@ uint32_t REV_Id = 0;
 uint16_t armed_timeout_count;
 uint16_t reverse_speed_threshold = 1500;
 uint8_t desync_happened = 0;
-char maximum_throttle_change_ramp = 1;
+
+// 当油门输入突然变化时（比如从 0 一下推到最大，或从最大一下松到 0），如果不加限制，占空比会瞬间跳变：
+// 电机电流暴增、电池电压被拉低，可能触发过流保护或损坏硬件
+// 开启 maximum_throttle_change_ramp 后，ESC 会限制 每周期占空比的最大变化量，让油门平滑变化。
+char maximum_throttle_change_ramp = 1; //  是 油门变化斜率限制 的开关，用来防止占空比突变，保护电机和电调
 
 char crawler_mode = 0; // no longer used //
 uint16_t velocity_count = 0;
@@ -352,7 +368,8 @@ int16_t actual_current = 0;
 
 char lowkv = 0;
 
-uint16_t min_startup_duty = 120;
+uint16_t min_startup_duty = 120; // 启动阶段的最小占空比，如果小于该数值，产生的扭矩不足以克服静摩擦和负载，电机可能会：抖动、发热、启动失败
+
 uint16_t sin_mode_min_s_d = 120;
 char bemf_timeout = 10;
 
@@ -361,9 +378,11 @@ char reversing_dead_band = 1;
 
 uint16_t low_pin_count = 0;
 
-uint8_t max_duty_cycle_change = 2;
-char fast_accel = 1;
+uint8_t max_duty_cycle_change = 2; // 允许的PWM最大瞬时变化量
+char fast_accel = 1;               // 快速加速标志，为1时，表示正在快速加速
 uint16_t last_duty_cycle = 0;
+
+// 是 DShot 方向切换命令的 蜂鸣音播放请求标志，它被延迟到电机低油门安全状态时执行，避免高速转动时播放提示音造成干扰。
 char play_tone_flag = 0;
 
 typedef enum
@@ -372,7 +391,7 @@ typedef enum
     GPIO_PIN_SET
 } GPIO_PinState;
 
-uint16_t startup_max_duty_cycle = 300 + DEAD_TIME;
+uint16_t startup_max_duty_cycle = 300 + DEAD_TIME; // 启动阶段允许的最大占空比
 uint16_t minimum_duty_cycle = DEAD_TIME;
 uint16_t stall_protect_minimum_duty = DEAD_TIME;
 char desync_check = 0;
@@ -387,7 +406,7 @@ uint16_t throttle_max_at_low_rpm = 400;              // 低转速时允许的最
 uint16_t throttle_max_at_high_rpm = TIM1_AUTORELOAD; // 高转速时允许的最大占空比
 
 uint16_t commutation_intervals[6] = {0};
-uint32_t average_interval = 0;
+uint32_t average_interval = 0; // 换相间隔平均值，单位不明，数值越大，转速越低
 uint32_t last_average_interval;
 int e_com_time;
 
@@ -402,7 +421,8 @@ uint16_t ADC_raw_input;
 uint8_t adc_counter = 0;
 char send_telemetry = 0;
 char telemetry_done = 0;
-char prop_brake_active = 0;
+
+char prop_brake_active = 0; // 当前是否需要制动
 
 uint8_t eepromBuffer[176] = {0};
 
@@ -509,7 +529,7 @@ uint16_t newinput = 0;
 char inputSet = 0;
 char dshot = 0;
 char servoPwm = 0;
-uint32_t zero_crosses;
+uint32_t zero_crosses; // 计算过零点次数
 
 uint8_t zcfound = 0;
 
@@ -1098,33 +1118,35 @@ void startMotor()
 {
     if (running == 0)
     {
-        commutate();
+        commutate(); // 执行一次六步换相，给电机一个初始位置/推力
         commutation_interval = 10000;
         INTERVAL_TIMER->CNT = 5000;
         running = 1;
     }
-    enableCompInterrupts();
+    enableCompInterrupts(); // // 使能比较器中断，开始自动检测 BEMF
 }
 
-void tenKhzRoutine()
+void tenKhzRoutine() // 10KHz控制
 {
-
     tenkhzcounter++;
-    if (tenkhzcounter > 10000)
-    { // 1s sample interval 10000
+    if (tenkhzcounter > 10000) // 每秒执行一次，打包要发送出去的数据
+    {
+        // 电流积分成 mAh 电量
+        // 除以 360 是一个缩放/单位转换系数，把电流值换算成每秒消耗的 mAh，然后累加到 consumed_current。
+        // 具体系数 360 取决于电流采样分辨率、放大倍数和 ADC 量程
         consumed_current = (float)actual_current / 360 + consumed_current;
+
         switch (dshot_extended_telemetry)
         {
-
-        case 1:
+        case 1: // 发送温度
             send_extended_dshot = 0b0010 << 8 | degrees_celsius;
             dshot_extended_telemetry = 2;
             break;
-        case 2:
+        case 2: // 发送电流
             send_extended_dshot = 0b0110 << 8 | (uint8_t)actual_current / 50;
             dshot_extended_telemetry = 3;
             break;
-        case 3:
+        case 3: // 发送电压
             send_extended_dshot = 0b0100 << 8 | (uint8_t)(battery_voltage / 25);
             dshot_extended_telemetry = 1;
             break;
@@ -1132,33 +1154,38 @@ void tenKhzRoutine()
 
         tenkhzcounter = 0;
     }
-    if (!armed && (cell_count == 0))
+
+    if (!armed && (cell_count == 0)) // 未解锁 && 还没有检测出电池节数
     {
-        if (inputSet)
+        if (inputSet) // 表示输入协议已经检测出来（DShot / PWM / CRSF 等）
         {
-            if (adjusted_input == 0)
+            if (adjusted_input == 0) // 映射后的油门值，只有零油门才允许解锁，防止上电时电机突然转动
             {
                 armed_timeout_count++;
-                if (armed_timeout_count > 10000)
-                { // one second
-                    if (zero_input_count > 30)
+                if (armed_timeout_count > 10000) // 大于 10000 意味着油门为 0 的状态已经持续了 1 秒
+                {
+                    if (zero_input_count > 30) // 连续检测到 30 次以上零油门，才允许解锁
                     {
-                        armed = 1;
+                        armed = 1; // 表示 ESC 解锁，之后电机才会响应油门
 #ifdef USE_LED_STRIP
                         //	send_LED_RGB(0,0,0);
                         delayMicros(1000);
                         send_LED_RGB(0, 255, 0);
 #endif
+
 #ifdef USE_RGB_LED
                         GPIOB->BRR = LL_GPIO_PIN_3;  // turn on green
                         GPIOB->BSRR = LL_GPIO_PIN_8; // turn on green
                         GPIOB->BSRR = LL_GPIO_PIN_5;
 #endif
+                        // 还没算过节数 && 用户启用了低压保护
                         if ((cell_count == 0) && LOW_VOLTAGE_CUTOFF)
                         {
+                            // battery_voltage 的单位是 0.01V（百分之一伏）。 370 对应单节锂电标称电压 3.70V
                             cell_count = battery_voltage / 370;
                             for (int i = 0; i < cell_count; i++)
                             {
+                                // 检测出几节电池，就蜂鸣几声
                                 playInputTune();
                                 delayMillis(100);
                                 LL_IWDG_ReloadCounter(IWDG);
@@ -1166,15 +1193,22 @@ void tenKhzRoutine()
                         }
                         else
                         {
+                            // 如果没有启用低压保护，或者节数已经算过了，就只 蜂鸣一声 表示解锁成功
                             playInputTune();
                         }
+
                         if (!servoPwm)
                         {
+                            // 如果当前输入信号不是舵机 PWM（servo PWM），就把 车模倒车模式标志 RC_CAR_REVERSE 强制清零。
+                            // RC_CAR_REVERSE 是 EEPROM 里的一项配置，开启的是 RC 攀爬车/车模专用模式
+                            // 这个模式是给“中位刹车、中位两侧分别是正反转”的舵机 PWM 车控设计的
                             RC_CAR_REVERSE = 0;
                         }
                     }
                     else
                     {
+                        // 如果已经等满 1 秒，但 zero_input_count <= 30，说明零油门检测还不够稳定。
+                        // 这时把 inputSet = 0，重新检测输入信号，并清零计时器
                         inputSet = 0;
                         armed_timeout_count = 0;
                     }
@@ -1182,12 +1216,14 @@ void tenKhzRoutine()
             }
             else
             {
+                // 如果在这 1 秒内发现油门不为 0，立刻清零 armed_timeout_count
+                // 必须从零开始再等 1 秒
                 armed_timeout_count = 0;
             }
         }
     }
 
-    if (TLM_ON_INTERVAL)
+    if (TLM_ON_INTERVAL) // 定时发送遥测数据
     {
         telem_ms_count++;
         if (telem_ms_count > telemetry_interval_ms * 10)
@@ -1196,22 +1232,26 @@ void tenKhzRoutine()
             telem_ms_count = 0;
         }
     }
+
 #ifndef BRUSHED_MODE
-    if (!stepper_sine)
+    if (!stepper_sine) // 目前在六步换向状态
     {
+        // 如果 ESC 已经解锁，并且当前油门 大于等于启动阈值，就让电机启动
+        // 正弦启动和普通启动的油门阈值不一样
         if (input >= 47 + (80 * use_sin_start) && armed)
         {
-            if (running == 0)
+            if (running == 0) // 电机当前没有运行
             {
-                allOff();
+                allOff(); // 把三相全部设为 高阻态（浮空）
                 if (!old_routine)
                 {
-                    startMotor();
+                    startMotor(); // 启动电机控制
                 }
-                running = 1;
-                last_duty_cycle = min_startup_duty;
+                running = 1;                        // 标记电机 已经进入运行状态
+                last_duty_cycle = min_startup_duty; // 把上一次占空比初始化为 最小启动占空比
             }
-            if (use_sin_start)
+
+            if (use_sin_start) // 是否启用了正弦启动模式
             {
                 duty_cycle = map(input, 137, 2047, minimum_duty_cycle, TIMER1_MAX_ARR);
             }
@@ -1219,21 +1259,26 @@ void tenKhzRoutine()
             {
                 duty_cycle = map(input, 47, 2047, minimum_duty_cycle, TIMER1_MAX_ARR);
             }
-            if (tenkhzcounter % 10 == 0)
-            { // 1khz PID loop
+
+            if (tenkhzcounter % 10 == 0) // 1khz PID loop
+            {
                 if (use_current_limit && running)
                 {
+                    // 动态调整电流限制
                     use_current_limit_adjust -= (int16_t)(doPidCalculations(&currentPid, actual_current, CURRENT_LIMIT * 100) / 10000);
                     if (use_current_limit_adjust < minimum_duty_cycle)
                     {
                         use_current_limit_adjust = minimum_duty_cycle;
                     }
+
                     if (use_current_limit_adjust > duty_cycle)
                     {
+                        // 这里没看懂
                         use_current_limit_adjust = duty_cycle;
                     }
                 }
 
+                // 针对堵转保护/防熄火功能做调整
                 if (stall_protection && running)
                 { // this boosts throttle as the rpm gets lower, for crawlers and rc cars only, do not use for multirotors.
                     stall_protection_adjust += (doPidCalculations(&stallPid, commutation_interval, stall_protect_target_interval)) / 10000;
@@ -1259,27 +1304,29 @@ void tenKhzRoutine()
                 //			  }
                 //		}
             }
+
             if (!RC_CAR_REVERSE)
             {
                 prop_brake_active = 0;
             }
         }
-        if (input < 47 + (80 * use_sin_start))
+
+        if (input < 47 + (80 * use_sin_start)) // 零油门状态
         {
-            if (play_tone_flag != 0)
+            if (play_tone_flag != 0) // 只有在低速或者停止时才播放提示音
             {
                 if (play_tone_flag == 1)
                 {
-                    playDefaultTone();
+                    playDefaultTone(); // 播放默认提示音
                 }
                 if (play_tone_flag == 2)
                 {
-                    playChangedTone();
+                    playChangedTone(); // 播放反向提示音
                 }
                 play_tone_flag = 0;
             }
 
-            if (!comp_pwm)
+            if (!comp_pwm) // 没有启用互补PWM功能
             {
                 duty_cycle = 0;
                 if (!running)
@@ -1288,40 +1335,47 @@ void tenKhzRoutine()
                     zero_crosses = 0;
                     if (brake_on_stop)
                     {
-                        fullBrake();
+                        fullBrake(); // 刹车
                     }
                     else
                     {
                         if (!prop_brake_active)
                         {
-                            allOff();
+                            // 例如正转切到反转时，会先制动，再切反转
+                            allOff(); // 当前不需要制动，自由滑行
                         }
                     }
                 }
+
+                // 车模模式 && 需要制动
                 if (RC_CAR_REVERSE && prop_brake_active)
                 {
 #ifndef PWM_ENABLE_BRIDGE
+                    // 计算刹车力度。
+                    //  中位是1000，代表没有油门，偏离1000越大，代表刹车力度越大
                     duty_cycle = getAbsDif(1000, newinput) + 1000;
+
                     if (duty_cycle == 2000)
                     {
-                        fullBrake();
+                        fullBrake(); // 刹死
                     }
                     else
                     {
-                        proportionalBrake();
+                        proportionalBrake(); // 按比例制动
                     }
 #endif
                 }
             }
-            else
+            else // 启用了互补PWM功能
             {
-                if (!running)
+                if (!running) // 当前不需要电机转动，但是电机可能还在转
                 {
                     duty_cycle = 0;
                     old_routine = 1;
                     zero_crosses = 0;
                     bad_count = 0;
-                    if (brake_on_stop)
+
+                    if (brake_on_stop) // 油门为零时主动制动
                     {
                         if (!use_sin_start)
                         {
@@ -1341,16 +1395,20 @@ void tenKhzRoutine()
                     }
                 }
 
+                // step： 六步换相中的步数，1 = 0°， 2 = 60°， 3 = 120°...,表明当前大概相位角
+                // enter_sine_angle：进入正弦模式时的额外偏移角，貌似和 pwmSin 表有关系，不是很理解
                 phase_A_position = ((step - 1) * 60) + enter_sine_angle;
                 if (phase_A_position > 359)
                 {
                     phase_A_position -= 360;
                 }
-                phase_B_position = phase_A_position + 119;
+
+                phase_B_position = phase_A_position + 119; // 好像是为了避免索引落在 360 的下标上，数组索引范围是0~359
                 if (phase_B_position > 359)
                 {
                     phase_B_position -= 360;
                 }
+
                 phase_C_position = phase_A_position + 239;
                 if (phase_C_position > 359)
                 {
@@ -1359,18 +1417,21 @@ void tenKhzRoutine()
 
                 if (use_sin_start == 1)
                 {
-                    stepper_sine = 1;
+                    stepper_sine = 1; // 打开正弦驱动
                 }
             }
-        }
-        if (!prop_brake_active)
+        } // 零油门状态处理逻辑结束
+
+        if (!prop_brake_active) // 非刹车状态
         {
+            // 当过零点次数有限时，限制油门大小
             if (zero_crosses < (20 >> stall_protection))
             {
                 if (duty_cycle < min_startup_duty)
                 {
                     duty_cycle = min_startup_duty;
                 }
+
                 if (duty_cycle > startup_max_duty_cycle)
                 {
                     duty_cycle = startup_max_duty_cycle;
@@ -1379,10 +1440,13 @@ void tenKhzRoutine()
 
             if (duty_cycle > duty_cycle_maximum)
             {
+                // 油门超出范围
                 duty_cycle = duty_cycle_maximum;
             }
+
             if (use_current_limit)
             {
+                // 限制电流
                 if (duty_cycle > use_current_limit_adjust)
                 {
                     duty_cycle = use_current_limit_adjust;
@@ -1391,10 +1455,11 @@ void tenKhzRoutine()
 
             if (stall_protection_adjust > 0)
             {
-
+                // 启用杜撰保护时，油门补偿
                 duty_cycle = duty_cycle + (uint16_t)stall_protection_adjust;
             }
-            if (maximum_throttle_change_ramp)
+
+            if (maximum_throttle_change_ramp) // 限制油门的变化速率
             {
                 //	max_duty_cycle_change = map(k_erpm, low_rpm_level, high_rpm_level, 1, 40);
 #ifdef VOLTAGE_BASED_RAMP
@@ -1418,7 +1483,7 @@ void tenKhzRoutine()
                 }
 #endif
 
-                if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change)
+                if ((duty_cycle - last_duty_cycle) > max_duty_cycle_change) // 快速加速
                 {
                     duty_cycle = last_duty_cycle + max_duty_cycle_change;
                     if (commutation_interval > 500)
@@ -1430,7 +1495,7 @@ void tenKhzRoutine()
                         fast_accel = 0;
                     }
                 }
-                else if ((last_duty_cycle - duty_cycle) > max_duty_cycle_change)
+                else if ((last_duty_cycle - duty_cycle) > max_duty_cycle_change) // 快速减速
                 {
                     duty_cycle = last_duty_cycle - max_duty_cycle_change;
                     fast_accel = 0;
@@ -1440,33 +1505,43 @@ void tenKhzRoutine()
                     fast_accel = 0;
                 }
             }
-        }
-        if ((armed && running) && input > 47)
+        } // 非刹车状态处理逻辑结束
+
+        if ((armed && running) && input > 47) // 解锁 && 正在运行 && 油门大于47（有效油门）
         {
             if (VARIABLE_PWM)
             {
+                // 可变PWM频率功能开启时，计算PWM周期
                 tim1_arr = map(commutation_interval, 96, 200, TIMER1_MAX_ARR / 2, TIMER1_MAX_ARR);
             }
+
+            // 换算成给到timer的数值
             adjusted_duty_cycle = ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
         }
         else
         {
             if (prop_brake_active)
             {
+                // 计算制动占空比
                 adjusted_duty_cycle = TIMER1_MAX_ARR - ((duty_cycle * tim1_arr) / TIMER1_MAX_ARR) + 1;
             }
             else
             {
+                // 在零油门或停机时，把 PWM 占空比设为一个仅等于死区时间的极小值，确保电机无功率输出，同时保持定时器输出状态安全可控。
+                // 不是很理解AI描述的“在互补 PWM 中，CCR 为 0 可能让低边 MOS 一直导通，而不是上下桥臂都关闭”，什么情况下会有？
                 adjusted_duty_cycle = DEAD_TIME * running;
             }
         }
-        last_duty_cycle = duty_cycle;
-        TIM1->ARR = tim1_arr;
 
+        last_duty_cycle = duty_cycle;
+
+        // 赋值给TIMER1，调整PWM输出
+        TIM1->ARR = tim1_arr;
         TIM1->CCR1 = adjusted_duty_cycle;
         TIM1->CCR2 = adjusted_duty_cycle;
         TIM1->CCR3 = adjusted_duty_cycle;
     }
+
     average_interval = e_com_time / 3;
     if (desync_check && zero_crosses > 10)
     {

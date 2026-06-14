@@ -30,11 +30,9 @@ extern char prop_brake_active;
 #define HIGH_BITREG_OFF BRR
 #endif
 
-void proportionalBrake()
-{ // alternate all channels between braking (ABC LOW) and coasting (ABC float)
-  // put lower channel into alternate mode and turn upper OFF for each channel
-	// turn all HIGH channels off for ABC
-
+void proportionalBrake() // 比例制动
+{ 
+	// 高边全关闭
 	LL_GPIO_SetPinMode(PHASE_A_GPIO_PORT_HIGH, PHASE_A_GPIO_HIGH, LL_GPIO_MODE_OUTPUT);
 	PHASE_A_GPIO_PORT_HIGH->HIGH_BITREG_OFF = PHASE_A_GPIO_HIGH;
 
@@ -44,7 +42,10 @@ void proportionalBrake()
 	LL_GPIO_SetPinMode(PHASE_C_GPIO_PORT_HIGH, PHASE_C_GPIO_HIGH, LL_GPIO_MODE_OUTPUT);
 	PHASE_C_GPIO_PORT_HIGH->HIGH_BITREG_OFF = PHASE_C_GPIO_HIGH;
 
-	// set low channel to PWM, duty cycle will now control braking
+	// 低边切到PWM模式
+	// 低边全导通时，100%制动
+	// 低边全关断时，自由滑行
+	// 其它占空比数值则按比例制动
 	LL_GPIO_SetPinMode(PHASE_A_GPIO_PORT_LOW, PHASE_A_GPIO_LOW, LL_GPIO_MODE_ALTERNATE);
 	LL_GPIO_SetPinMode(PHASE_B_GPIO_PORT_LOW, PHASE_B_GPIO_LOW, LL_GPIO_MODE_ALTERNATE);
 	LL_GPIO_SetPinMode(PHASE_C_GPIO_PORT_LOW, PHASE_C_GPIO_LOW, LL_GPIO_MODE_ALTERNATE);
@@ -250,7 +251,7 @@ void phaseALOW()
 
 #endif
 
-void allOff()
+void allOff() // 把所有引脚设为float态，电机自由滑行
 {
 	phaseAFLOAT();
 	phaseBFLOAT();
@@ -303,7 +304,7 @@ void comStep(int newStep)
 	// stop_time = TIM14->CNT;
 }
 
-void fullBrake()
+void fullBrake() // 刹车，低边全导通，高边全关闭
 { // full braking shorting all low sides
 	phaseALOW();
 	phaseBLOW();
