@@ -258,7 +258,7 @@ uint16_t target_e_com_time_low;
 uint8_t crsf_input_channel = 1;
 char eeprom_layout_version = 2;
 char dir_reversed = 0;
-char comp_pwm = 1; // 互补PWM功能是否启用，即上下桥臂是否使用互补的波形进行控制
+char comp_pwm = 1;     // 互补PWM功能是否启用，即上下桥臂是否使用互补的波形进行控制
 char VARIABLE_PWM = 1; // PWM频率是否可变
 char bi_direction = 0;
 char stuck_rotor_protection = 1; // Turn off for Crawlers
@@ -340,7 +340,7 @@ uint32_t REV_Id = 0;
 
 uint16_t armed_timeout_count;
 uint16_t reverse_speed_threshold = 1500;
-uint8_t desync_happened = 0;
+uint8_t desync_happened = 0; // 失步事件计数器，每次检测到失步时，这个计数器加 1
 
 // 当油门输入突然变化时（比如从 0 一下推到最大，或从最大一下松到 0），如果不加限制，占空比会瞬间跳变：
 // 电机电流暴增、电池电压被拉低，可能触发过流保护或损坏硬件
@@ -380,7 +380,7 @@ uint16_t low_pin_count = 0;
 
 uint8_t max_duty_cycle_change = 2; // 允许的PWM最大瞬时变化量
 char fast_accel = 1;               // 快速加速标志，为1时，表示正在快速加速
-uint16_t last_duty_cycle = 0;
+uint16_t last_duty_cycle = 0;      // 上一次的占空比，用于油门斜坡限制，如果油门变化过大，限制住
 
 // 是 DShot 方向切换命令的 蜂鸣音播放请求标志，它被延迟到电机低油门安全状态时执行，避免高速转动时播放提示音造成干扰。
 char play_tone_flag = 0;
@@ -405,10 +405,15 @@ uint16_t high_rpm_level = 70;                        //
 uint16_t throttle_max_at_low_rpm = 400;              // 低转速时允许的最大占空比
 uint16_t throttle_max_at_high_rpm = TIM1_AUTORELOAD; // 高转速时允许的最大占空比
 
-uint16_t commutation_intervals[6] = {0};
-uint32_t average_interval = 0; // 换相间隔平均值，单位不明，数值越大，转速越低
+// 测量换相间隔的定时器是 TIM2，配置为：
+// TIM_InitStruct.Prescaler = 31;      // 分频
+// 实际技术频率：64 MHz / (31 + 1) = 64 MHz / 32 = 2 MHz
+// 每个计数 tick 对应的时间：T = 1 / 2 MHz = 0.5 µs
+uint16_t commutation_intervals[6] = {0}; // 最近6次换相的时间间隔，单位0.5us，当数值为1000时，即：1000*0.5=500us。 用于计算电气周期和转速
+uint32_t average_interval = 0;           // 换相间隔平均值，单位0.5us
 uint32_t last_average_interval;
-int e_com_time;
+
+int e_com_time; // 一个电气周期的时间，单位us
 
 uint16_t ADC_smoothed_input = 0;
 uint8_t degrees_celsius;
@@ -429,7 +434,7 @@ uint8_t eepromBuffer[176] = {0};
 char dshot_telemetry = 0;
 
 uint8_t last_dshot_command = 0;
-char old_routine = 0;
+char old_routine = 0; // 为0时，使用中断自动比较过零点； 为1时，在main中轮询过零点
 uint16_t adjusted_input = 0;
 
 #define TEMP30_CAL_VALUE ((uint16_t *)((uint32_t)0x1FFFF7B8))
@@ -529,7 +534,7 @@ uint16_t newinput = 0;
 char inputSet = 0;
 char dshot = 0;
 char servoPwm = 0;
-uint32_t zero_crosses; // 计算过零点次数
+uint32_t zero_crosses; // 累计检测到的 BEMF 过零点次数，用于判断是否进入稳定运行
 
 uint8_t zcfound = 0;
 
@@ -542,9 +547,9 @@ uint16_t thiszctime;
 
 uint16_t duty_cycle = 0;
 char step = 1;
-uint16_t commutation_interval = 12500;
+uint16_t commutation_interval = 12500; // 平滑后的当前换相间隔，用于决定换相时机和保护逻辑，单位 0.5us
 uint16_t waitTime = 0;
-uint16_t signaltimeout = 0;
+uint16_t signaltimeout = 0; // 计数器，接收到有效输入命令时清理
 uint8_t ubAnalogWatchdogStatus = RESET;
 
 void checkForHighSignal()
@@ -1542,38 +1547,53 @@ void tenKhzRoutine() // 10KHz控制
         TIM1->CCR3 = adjusted_duty_cycle;
     }
 
-    average_interval = e_com_time / 3;
-    if (desync_check && zero_crosses > 10)
+    average_interval = e_com_time / 3;     // 获取每步的平均换向间隔， e_com_time(us) / 6 * 2 = average_interval(0.5us)
+    if (desync_check && zero_crosses > 10) // 每转完一圈检测一次是否失步
     {
-        //	if(average_interval < last_average_interval){
-        //
-        //	}
+        // average_interval < 2000： 只在转速较快时判断，低速时：BEMF 信号很弱，检测不稳定；换相间隔本身波动就大；转速测量噪声大
+        // 高速时，如果换相间隔变化超过50%，三选一：电机失步了（ESC 换相节奏和转子位置不同步；负载突变；BEMF 检测出错
         if ((getAbsDif(last_average_interval, average_interval) > average_interval >> 1) && (average_interval < 2000))
         { // throttle resitricted before zc 20.
             zero_crosses = 0;
             desync_happened++;
             running = 0;
             old_routine = 1;
-            if (zero_crosses > 100)
+#if 0
+            // 这个原来存在，但是没有意义
+            // 猜测：原来可能是想转速较高时，就不要从0开始了，从一个中等值开始
+            if (zero_crosses > 100) 
             {
                 average_interval = 5000;
             }
+#endif
             last_duty_cycle = min_startup_duty / 2;
         }
+
         desync_check = 0;
-        //	}
+
         last_average_interval = average_interval;
     }
+
 #ifndef MCU_F031
     if (commutation_interval > 400)
     {
+        // 低速时：
+        // 换相间隔长，BEMF 过零事件不频繁，对时机要求相对宽松。
+        // 输入信号（尤其是 DShot）的解码对实时性要求高，错过一次 DMA 传输就可能丢帧。
+        // 电机转速慢，控制环没那么急。
+        // 所以让 输入信号中断优先。
         NVIC_SetPriority(IC_DMA_IRQ_NAME, 0);
         NVIC_SetPriority(ADC1_COMP_IRQn, 1);
     }
     else
     {
-        NVIC_SetPriority(IC_DMA_IRQ_NAME, 1);
-        NVIC_SetPriority(ADC1_COMP_IRQn, 0);
+        // 高速时：
+        // 换相间隔很短，BEMF 过零检测非常频繁。
+        // 每次过零后都要精确计算下次换相时间，稍有延迟就会失步。
+        // 输入信号帧时间短，处理窗口相对宽裕。
+        // 所以让 BEMF 比较器中断优先。
+        NVIC_SetPriority(IC_DMA_IRQ_NAME, 1); // 输入信号捕获/DMA 中断，处理 DShot / PWM / CRSF 信号接收
+        NVIC_SetPriority(ADC1_COMP_IRQn, 0);  // ADC 和比较器中断，处理电流/电压/温度采样和 BEMF 过零检测
     }
 #endif // mcu f031
 
@@ -1582,17 +1602,18 @@ void tenKhzRoutine() // 10KHz控制
     if (send_telemetry)
     {
 #ifdef USE_SERIAL_TELEMETRY
+        // 把温度、电压、电流、电量、转速打包成 KISS 遥测协议帧
         makeTelemPackage(degrees_celsius,
                          battery_voltage,
                          actual_current,
                          (uint16_t)consumed_current,
                          e_rpm);
-        send_telem_DMA();
+        send_telem_DMA(); // 通过 USART1 + DMA 把遥测帧发送出去
         send_telemetry = 0;
 #endif
     }
-#if defined(FIXED_DUTY_MODE) || defined(FIXED_SPEED_MODE)
 
+#if defined(FIXED_DUTY_MODE) || defined(FIXED_SPEED_MODE)
     if (INPUT_PIN_PORT->IDR & INPUT_PIN)
     {
         signaltimeout++;
@@ -1607,9 +1628,9 @@ void tenKhzRoutine() // 10KHz控制
     }
 #else
     signaltimeout++;
-    if (signaltimeout > 5000)
-    { // half second timeout when armed;
-        if (armed)
+    if (signaltimeout > 5000) // 0.5秒以上接收不到命令
+    {
+        if (armed) // 如果已经解锁，重启
         {
             allOff();
             armed = 0;
@@ -1628,8 +1649,8 @@ void tenKhzRoutine() // 10KHz控制
             NVIC_SystemReset();
         }
 
-        if (signaltimeout > 25000)
-        { // 2.5 second
+        if (signaltimeout > 25000) // 即使没有解锁，2.5秒接收不到命令也重启
+        {                          // 2.5 second
             allOff();
             armed = 0;
             input = 0;
