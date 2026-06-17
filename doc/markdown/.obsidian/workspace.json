@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "hardware/CMRR.md",
+                "file": "hardware/CurrentSense.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CMRR"
+              "title": "CurrentSense"
             }
           }
         ]
@@ -185,8 +185,8 @@
   },
   "active": "e8089712550f4faf",
   "lastOpenFiles": [
-    "hardware/CurrentSense.md",
     "hardware/CMRR.md",
+    "hardware/CurrentSense.md",
     "hardware/attachments/Pasted image 20260617222239.png",
     "hardware/attachments/inline.png",
     "hardware/attachments/highside.png",
