@@ -25,8 +25,8 @@ $$V_{error} = \frac{V_{cm}}{10^{CMRR/20}} = \frac{9.95}{10^{100/20}} = \frac{9.9
 
 
 ## 1.4 最终误差评估
-$$\text{误差比例} = \frac{4.975 \text{ mV}}{5 \text{ V}} \times 100 = 0.0995 \approx 0.1\%$$
-
+$$\text{误差比例} = \frac{4.975 \text{ mV}}{5 \text{ V}} \times 100 = 0.0995 \approx 0.1$$
++ 此处 “0.1” 指 “百分之0.1”，暂时没找到一个同时支持`obsidian`和`gihub`的写法
 
 # 2 根据需求选型
 ## 2.1 需求
