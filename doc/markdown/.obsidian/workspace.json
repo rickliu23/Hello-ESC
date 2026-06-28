@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "OpAmpParameterTest/01-OpAmpParametersList.md",
+                "file": "OpAmpParameterTest/03-BandwidthTest.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "01-OpAmpParametersList"
+              "title": "03-BandwidthTest"
             }
           }
         ]
@@ -185,9 +185,9 @@
   },
   "active": "e8089712550f4faf",
   "lastOpenFiles": [
+    "OpAmpParameterTest/01-OpAmpParametersList.md",
     "OpAmpParameterTest/02-SlewRateTest.md",
     "OpAmpParameterTest/03-BandwidthTest.md",
-    "OpAmpParameterTest/01-OpAmpParametersList.md",
     "hardware/CurrentSense.md",
     "hardware/CMRR.md",
     "hardware/BusCurrentSense.md",

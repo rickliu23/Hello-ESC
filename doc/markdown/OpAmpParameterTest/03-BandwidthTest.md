@@ -23,17 +23,21 @@
 + 仅为示例，参数如之前所述
 + 后续不再截取
 
-## 3.2 频率：1KHz
+## 3.2 输出波形测量
+### 3.2.1 频率：1KHz
 ![](attachments/output_1KHz.png)
 
-## 3.3 频率：10KHz，周期100us
+### 3.2.2 频率：10KHz，周期100us
 ![](attachments/output_10KHz.png)
 
-## 3.4 频率：20KHz，周期50us
+### 3.2.3 频率：20KHz，周期50us
 ![](attachments/output_20KHz.png)
 
-## 3.5 频率：40KHz，周期25us
+### 3.2.4 频率：40KHz，周期25us
 ![](attachments/output_40KHz.png)
 
-## 3.6 频率：80KHz，周期12.5us
+### 3.2.5 频率：80KHz
 ![](attachments/output_80KHz.png)
++ 使用60Khz带宽的运放测量80KH的波形
+    + 失真严重，完全不可行
+
