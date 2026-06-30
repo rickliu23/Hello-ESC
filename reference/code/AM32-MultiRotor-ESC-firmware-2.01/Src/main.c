@@ -536,14 +536,14 @@ char dshot = 0;
 char servoPwm = 0;
 uint32_t zero_crosses; // 累计检测到的 BEMF 过零点次数，用于判断是否进入稳定运行
 
-uint8_t zcfound = 0;
+uint8_t zcfound = 0; // 过零发现标志位，如果为1，代表本轮已经检测到过零点，执行换向操作后清除
 
-uint8_t bemfcounter;
+uint8_t bemfcounter; // 过零检测计数值，轮询检测过零点时使用，当数值符合条件次数达到阈值时，才认为是有效过零点
 uint8_t min_bemf_counts_up = TARGET_MIN_BEMF_COUNTS;
 uint8_t min_bemf_counts_down = TARGET_MIN_BEMF_COUNTS;
 
-uint16_t lastzctime;
-uint16_t thiszctime;
+uint16_t lastzctime; // 本次过零/换相时刻 INTERVAL_TIMER->CNT 的计数值
+uint16_t thiszctime; // 声明了但代码里完全没有使用，是遗留的死代码
 
 uint16_t duty_cycle = 0;
 char step = 1;
@@ -994,9 +994,9 @@ void commutate()
         if (step > 6)
         {
             step = 1;
-            desync_check = 1;
+            desync_check = 1; // 一轮六步换向结束，可以进行失步检查
         }
-        rising = step % 2;
+        rising = step % 2; // 根据当前步数决定期望 BEMF 是上升沿还是下降沿
     }
     else
     {
@@ -1011,18 +1011,22 @@ void commutate()
 
     if (!prop_brake_active)
     {
+        // 若未在比例制动中，按当前 step 输出对应的六步换相状态
         comStep(step);
     }
 
-    changeCompInput();
+    changeCompInput(); // 调整比较器设置，检测下一个过零点
 
     if (average_interval > 2000 && (stall_protection || RC_CAR_REVERSE))
     {
+        // 转速很低，或者特殊模式下，切回到轮询检测过零点的模式
         old_routine = 1;
     }
-    bemfcounter = 0;
-    zcfound = 0;
-    if (use_speed_control_loop && running)
+
+    bemfcounter = 0; // 清零 BEMF 连续计数（为下一次过零检测做准备）
+    zcfound = 0;     // 清零过零发现标志
+
+    if (use_speed_control_loop && running) // 如果用的是速度环控制
     {
         input_override += doPidCalculations(&speedPid, e_com_time, target_e_com_time) / 10000;
         if (input_override > 2047)
@@ -1040,83 +1044,109 @@ void commutate()
     }
 }
 
+// 换向延时到了
 void PeriodElapsedCallback()
 {
+    // 关闭 COM_TIMER 自身的更新中断，防止这次中断还没处理完又重复触发。
+    COM_TIMER->DIER &= ~((0x1UL << (0U)));
 
-    COM_TIMER->DIER &= ~((0x1UL << (0U))); // disable interrupt
+    // 对换相间隔做一阶低通滤波：新间隔 = 旧间隔的 75% + 本次实测间隔（thiszctime）的 25%。
+    // 目的是让换相间隔平滑变化，减少抖动。
     commutation_interval = ((3 * commutation_interval) + thiszctime) >> 2;
-    commutate();
+
+    commutate(); // 执行换向操作
+
+    // 理想情况下，检测到过零点后，再等待旋转30度再换向（原因去看换向的那个图表）
+    // 因为电路、中断、程序执行都存在一定延时，所以会提前一点执行换向操作，去弥补这个延时
+    // 把这个提前量分成8个挡位，每档7.5度
     advance = (commutation_interval >> 3) * advance_level; // 60 divde 8 7.5 degree increments
+
+    // commutation_interval：转过60°的时间，60° = 两个换向中间的完整角度
+    // commutation_interval >> 1： 一半的换向间隔，即 转过30°需要的时间
+    // waitTime = 经过这个时间后，执行换向
+    // 理论下是过零点后转过30度再换向，但因为物理因素，所以提前一点换向
+    // 比如这里是转过22.5°后就执行换向
     waitTime = (commutation_interval >> 1) - advance;
+
     if (!old_routine)
     {
+        // 重新使能比较器中断，让硬件自动检测下一次 BEMF 过零。
+        // 检测过零的中断函数里，会把换向延时的中断再打开
         enableCompInterrupts(); // enable comp interrupt
     }
+
     if (zero_crosses < 10000)
     {
         zero_crosses++;
     }
 }
 
+// 使用中断检测过零点时的中断响应函数
 void interruptRoutine()
 {
     if (average_interval > 125)
     {
         if ((INTERVAL_TIMER->CNT < 125) && (duty_cycle < 600) && (zero_crosses < 500))
-        { // should be impossible, desync?exit anyway
+        {
+            // 如果刚换向不久、占空比比较低、换向总次数也不多
+            // 认为是干扰因素导致的进入中断，直接返回
             return;
         }
+
         if (INTERVAL_TIMER->CNT < (commutation_interval >> 1))
         {
+            // 消隐：换相后的一段时间内禁止再次触发，避免开关噪声被误认为是 BEMF 过零
             return;
         }
+
         stuckcounter++; // stuck at 100 interrupts before the main loop happens again.
         if (stuckcounter > 100)
         {
+            // 如果连续 100 次进入中断但主循环没来得及处理，说明可能卡死，关闭比较器中断并清零过零计数
             maskPhaseInterrupts();
             zero_crosses = 0;
             return;
         }
     }
+
+    // 记录本次的过零间隔数值
     thiszctime = INTERVAL_TIMER->CNT;
-    if (rising)
+
+    // 滤波确认过零，防止噪声干扰
+    if (rising) // 上升沿过零
     {
         for (int i = 0; i < filter_level; i++)
         {
-#ifdef MCU_F031
-            if (!(current_GPIO_PORT->IDR & current_GPIO_PIN))
-            {
-#else
             if (LL_COMP_ReadOutputLevel(active_COMP) == LL_COMP_OUTPUT_LEVEL_HIGH)
             {
-#endif
                 return;
             }
         }
     }
-    else
+    else // 下降沿过零
     {
         for (int i = 0; i < filter_level; i++)
         {
-#ifdef MCU_F031
-            if ((current_GPIO_PORT->IDR & current_GPIO_PIN))
-            {
-#else
             if (LL_COMP_ReadOutputLevel(active_COMP) == LL_COMP_OUTPUT_LEVEL_LOW)
             {
-#endif
+
                 return;
             }
         }
     }
+
+    // 先关闭比较器中断，防止在下次换相之前再次触发
     maskPhaseInterrupts();
+
+    // 为什么不直接写成 thiszctime = INTERVAL_TIMER->CNT ？？？
     thiszctime += INTERVAL_TIMER->CNT - thiszctime;
+
     INTERVAL_TIMER->CNT = 0;
-    waitTime = waitTime >> fast_accel;
+    waitTime = waitTime >> fast_accel; // 如果正在快速加速，过零点需要更加提前
     COM_TIMER->CNT = 0;
     COM_TIMER->ARR = waitTime;
     COM_TIMER->SR = 0x00;
-    COM_TIMER->DIER |= (0x1UL << (0U)); // enable COM_TIMER interrupt
+    COM_TIMER->DIER |= (0x1UL << (0U)); // 使能换向延时中断
 }
 
 void startMotor()
