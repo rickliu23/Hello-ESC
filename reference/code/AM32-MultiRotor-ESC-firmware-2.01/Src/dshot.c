@@ -57,7 +57,7 @@ void computeDshotDMA()
 	int j = 0;
 	dshot_frametime = dma_buffer[31] - dma_buffer[0];
 
-#if defined(MCU_F051) || defined(MCU_F031)
+#if 0//defined(MCU_F051) || defined(MCU_F031)
 	if ((dshot_frametime < 1350) && (dshot_frametime > 1150))
 	{
 		for (int i = 0; i < 16; i++)
@@ -65,7 +65,7 @@ void computeDshotDMA()
 			dpulse[i] = ((dma_buffer[j + (i << 1) + 1] - dma_buffer[j + (i << 1)]) >> 5);
 		}
 #endif
-#if defined(MCU_G071) || defined(MCU_GD32)
+#if 1//defined(MCU_G071) || defined(MCU_GD32)
 		if ((dshot_frametime < 1690) && (dshot_frametime > 1600))
 		{
 			for (int i = 0; i < 16; i++)
@@ -73,7 +73,7 @@ void computeDshotDMA()
 				dpulse[i] = ((dma_buffer[j + (i << 1) + 1] - dma_buffer[j + (i << 1)]) >> 6);
 			}
 #endif
-#if defined(MCU_L431)
+#if 0//defined(MCU_L431)
 			if ((dshot_frametime < 350) && (dshot_frametime > 200))
 			{
 				for (int i = 0; i < 16; i++)
@@ -274,7 +274,7 @@ void computeDshotDMA()
 						| gcr_encode_table[(((1 << 4) - 1) & (dshot_full_number >> 4))] << 5  // 3rd set of four digits
 						| gcr_encode_table[(((1 << 4) - 1) & (dshot_full_number >> 0))];	  // last four digits
 // GCR RLL encode 20 to 21bit output
-#if defined(MCU_F051) || defined(MCU_F031)
+#if 0//defined(MCU_F051) || defined(MCU_F031)
 			gcr[1 + buffer_padding] = 64;
 			for (int i = 19; i >= 0; i--)
 			{																												   // each digit in gcrnumber
@@ -282,7 +282,7 @@ void computeDshotDMA()
 			}
 			gcr[buffer_padding] = 0;
 #endif
-#ifdef MCU_G071
+#if 1//defined(MCU_G071) 
 			gcr[1 + 7] = 94;
 			for (int i = 19; i >= 0; i--)
 			{																						 // each digit in gcrnumber
@@ -290,7 +290,7 @@ void computeDshotDMA()
 			}
 			gcr[7] = 0;
 #endif
-#ifdef MCU_GD32
+#if 0//defined(MCU_GD32) 
 			gcr[1 + 7] = 84;
 			for (int i = 19; i >= 0; i--)
 			{																						 // each digit in gcrnumber
@@ -298,7 +298,7 @@ void computeDshotDMA()
 			}
 			gcr[7] = 0;
 #endif
-#ifdef MCU_L431
+#if 0//defined(MCU_L431) 
 			gcr[1 + 7] = 118;
 			for (int i = 19; i >= 0; i--)
 			{																						  // each digit in gcrnumber
