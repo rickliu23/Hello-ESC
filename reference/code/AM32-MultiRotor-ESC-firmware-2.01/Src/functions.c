@@ -31,6 +31,7 @@ int getAbsDif(int number1, int number2)
 	return result;
 }
 
+// 当前G071时钟频率下,micros的单位是us
 void delayMicros(uint32_t micros)
 {
 	UTILITY_TIMER->CNT = 0;

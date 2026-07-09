@@ -286,9 +286,12 @@ char USE_HALL_SENSOR = 0;
 uint16_t enter_sine_angle = 180;
 char do_once_sinemode = 0;
 //============================= Servo Settings ==============================
-uint16_t servo_low_threshold = 1100;  // anything below this point considered 0
-uint16_t servo_high_threshold = 1900; // anything above this point considered 2000 (max)
-uint16_t servo_neutral = 1500;
+// 零油门数值,任何低于该值的油门都会认为是零,会留一定余量,比如1000~1100都是零油门
+// 上电时如果做了校准操作,这个值会改变
+uint16_t servo_low_threshold = 1100;
+// 满油门数值,同零油门数值
+uint16_t servo_high_threshold = 1900;
+uint16_t servo_neutral = 1500; // 支持双向功能时的分界值，小于该值、大于该值，旋转方向不一样
 uint8_t servo_dead_band = 100;
 
 //========================= Battery Cuttoff Settings ========================
@@ -434,8 +437,8 @@ uint8_t eepromBuffer[176] = {0};
 char dshot_telemetry = 0; // 0：单向，只通过该线接收油门数据， 1：双向，也通过该线对外发送温度、转速等数据
 
 uint8_t last_dshot_command = 0;
-char old_routine = 0; // 为0时，使用中断自动比较过零点； 为1时，在main中轮询过零点
-uint16_t adjusted_input = 0;
+char old_routine = 0;        // 为0时，使用中断自动比较过零点； 为1时，在main中轮询过零点
+uint16_t adjusted_input = 0; // ESC 内部统一使用的油门目标值，不管输入是 DShot、Servo PWM 还是 CRSF，最终都转换成这个 0~2047 的值来驱动电机
 
 #define TEMP30_CAL_VALUE ((uint16_t *)((uint32_t)0x1FFFF7B8))
 #define TEMP110_CAL_VALUE ((uint16_t *)((uint32_t)0x1FFFF7C2))
@@ -530,7 +533,11 @@ char armed = 0;
 uint16_t zero_input_count = 0; // 是连续检测到"油门为 0"的计数器，主要用于 ESC 的解锁安全机制。
 
 uint16_t input = 0;
+
+// AM32内部统一的目标输入值，把 DShot/PWM/CRSF/ADC 等不同协议归一化到 0 ~ 2000（或 DShot 的 0 ~ 2047）
+// 然后 main.c 再根据单向/双向/GIMBAL 模式把它转换成最终电机控制用的 adjusted_input。
 uint16_t newinput = 0;
+
 char inputSet = 0; // 0=未识别输入协议，1 = 已经识别输入协议（DShot / Servo PWM / CRSF / ADC 等）
 char dshot = 0;    // 当前输入信号协议是DShot 数字协议
 char servoPwm = 0;
@@ -552,59 +559,64 @@ uint16_t waitTime = 0;
 uint16_t signaltimeout = 0; // 计数器，接收到有效输入命令时清理
 uint8_t ubAnalogWatchdogStatus = RESET;
 
+// 上电时,检查信号线上电平
+// 如持续高则重启
 void checkForHighSignal()
 {
-    changeToInput();
-    LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_DOWN);
-    delayMicros(1000);
-    for (int i = 0; i < 1000; i++)
+    changeToInput();                                                  // 输入引脚切到输入模式
+    LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_DOWN); // 配置为下拉
+    delayMicros(1000);                                                // 等待 1ms 稳定
+    for (int i = 0; i < 1000; i++)                                    // 采样 1000 次, 总共10ms
     {
-        if (!(INPUT_PIN_PORT->IDR & INPUT_PIN))
-        { // if the pin is low for 5 checks out of 100 in  100ms or more its either no signal or signal. jump to application
-            low_pin_count++;
+        if (!(INPUT_PIN_PORT->IDR & INPUT_PIN)) // 如果引脚为低电平
+        {
+            low_pin_count++; // 低电平计数 +1
         }
-        delayMicros(10);
+        delayMicros(10); // 每次间隔 10us
     }
-    LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_UP);
-    if (low_pin_count > 5)
+    LL_GPIO_SetPinPull(INPUT_PIN_PORT, INPUT_PIN, LL_GPIO_PULL_UP); // 恢复上拉
+    if (low_pin_count > 5)                                          // 低电平次数 > 5
     {
-        return; // its either a signal or a disconnected pin
+        return; // 引脚不是持续高，继续运行
     }
     else
     {
-        allOff();
-        NVIC_SystemReset();
+        allOff();           // 关闭所有 MOS，停止驱动
+        NVIC_SystemReset(); // 系统复位
     }
 }
 
+//
+// 标准位置式 PID 控制器
+// 根据实际值 actual 和目标值 target 计算输出，用于速度环/电流限制/堵转保护
+// Kp/Ki/Kd 以放大 10000 倍的形式存储，调用处通常再除以 10000 还原
 float doPidCalculations(struct fastPID *pidnow, int actual, int target)
 {
-
-    pidnow->error = actual - target;
-    pidnow->integral = pidnow->integral + pidnow->error * pidnow->Ki;
-    if (pidnow->integral > pidnow->integral_limit)
+    pidnow->error = actual - target;                                  // 计算当前误差：实际值 - 目标值
+    pidnow->integral = pidnow->integral + pidnow->error * pidnow->Ki; // 积分项累加：误差 × 积分系数
+    if (pidnow->integral > pidnow->integral_limit)                    // 积分正限幅，防止积分饱和
     {
         pidnow->integral = pidnow->integral_limit;
     }
-    if (pidnow->integral < -pidnow->integral_limit)
+    if (pidnow->integral < -pidnow->integral_limit) // 积分负限幅
     {
         pidnow->integral = -pidnow->integral_limit;
     }
 
-    pidnow->derivative = pidnow->Kd * (pidnow->error - pidnow->last_error);
-    pidnow->last_error = pidnow->error;
+    pidnow->derivative = pidnow->Kd * (pidnow->error - pidnow->last_error); // 微分项：Kd × 误差变化率
+    pidnow->last_error = pidnow->error;                                     // 保存本次误差，供下次计算微分用
 
-    pidnow->pid_output = pidnow->error * pidnow->Kp + pidnow->integral + pidnow->derivative;
+    pidnow->pid_output = pidnow->error * pidnow->Kp + pidnow->integral + pidnow->derivative; // PID 输出 = 比例 + 积分 + 微分
 
-    if (pidnow->pid_output > pidnow->output_limit)
+    if (pidnow->pid_output > pidnow->output_limit) // 输出正限幅
     {
         pidnow->pid_output = pidnow->output_limit;
     }
-    if (pidnow->pid_output < -pidnow->output_limit)
+    if (pidnow->pid_output < -pidnow->output_limit) // 输出负限幅
     {
         pidnow->pid_output = -pidnow->output_limit;
     }
-    return pidnow->pid_output;
+    return pidnow->pid_output; // 返回 PID 计算结果
 }
 
 void loadEEpromSettings()
