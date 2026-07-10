@@ -257,46 +257,49 @@ uint16_t target_e_com_time_low;
 
 uint8_t crsf_input_channel = 1;
 char eeprom_layout_version = 2;
-char dir_reversed = 0;
-char comp_pwm = 1;     // 互补PWM功能是否启用，即上下桥臂是否使用互补的波形进行控制
-char VARIABLE_PWM = 1; // PWM频率是否可变
-char bi_direction = 0;
-char stuck_rotor_protection = 1; // Turn off for Crawlers
-char brake_on_stop = 0;          // 用户参数，决定电机停止时（油门为 0）是刹车还是自由滑行， 1：停止时主动制动
+char dir_reversed = 0;           // eepromBuffer[17]：电机转向是否反转（0x01 反转）
+char comp_pwm = 1;               // eepromBuffer[20]：互补PWM功能是否启用，即上下桥臂是否使用互补的波形进行控制
+char VARIABLE_PWM = 1;           // eepromBuffer[21]：PWM频率是否可变
+char bi_direction = 0;           // eepromBuffer[18]：是否启用双向旋转模式
+char stuck_rotor_protection = 1; // eepromBuffer[22]：堵转保护开关（攀爬车建议关闭）
+char brake_on_stop = 0;          // eepromBuffer[28]：停止时主动制动（0=自由滑行，1=刹车）
 
+// eepromBuffer[29]：失速/防熄火保护开关
 // 堵转保护/防熄火功能，主要用于 低速大扭矩场景，比如攀爬车（crawler）、RC 车等
 // 当电机负载变大、转速下降时，stall_protection 会 自动增加油门/占空比，防止电机因为扭矩不足而停转（堵转）。
 char stall_protection = 0;
 
-char use_sin_start = 0; // 是一个配置参数，决定是否启用 开环正弦启动 功能
-char TLM_ON_INTERVAL = 0;
+char use_sin_start = 0;   // eepromBuffer[19]：是否启用开环正弦启动功能
+char TLM_ON_INTERVAL = 0; // eepromBuffer[31]：是否按间隔自动发送 KISS 遥测
 uint8_t telemetry_interval_ms = 30;
-uint8_t TEMPERATURE_LIMIT = 255; // degrees 255 to disable
-char advance_level = 2;          // 7.5 degree increments 0 , 7.5, 15, 22.5)
-uint16_t motor_kv = 2000;
-char motor_poles = 14;
-uint16_t CURRENT_LIMIT = 202;
-uint8_t sine_mode_power = 5;
-char drag_brake_strength = 10; // Drag Brake Power when brake on stop is enabled
-uint8_t driving_brake_strength = 10;
+uint8_t TEMPERATURE_LIMIT = 255;     // eepromBuffer[43]：温度保护阈值（°C），255=禁用
+char advance_level = 2;              // eepromBuffer[23]：换相提前角级别，每级约 7.5°（0/7.5/15/22.5）
+uint16_t motor_kv = 2000;            // eepromBuffer[26]：电机 KV 值，实际值 = buf[26] * 40 + 20
+char motor_poles = 14;               // eepromBuffer[27]：电机磁极数
+uint16_t CURRENT_LIMIT = 202;        // eepromBuffer[44]：电流限制值（A），实际值 = buf[44] * 2
+uint8_t sine_mode_power = 5;         // eepromBuffer[45]：正弦启动阶段功率/强度
+char drag_brake_strength = 10;       // eepromBuffer[41]：停止时拖刹强度（1~10）
+uint8_t driving_brake_strength = 10; // eepromBuffer[42]：主动刹车强度（1~9）
 uint8_t dead_time_override = DEAD_TIME;
-char sine_mode_changeover_thottle_level = 5; // Sine Startup Range
+char sine_mode_changeover_thottle_level = 5; // eepromBuffer[40]：正弦启动切换到 BEMF 闭环的油门百分比（5~25%）
 uint16_t stall_protect_target_interval = TARGET_STALL_PROTECTION_INTERVAL;
-char USE_HALL_SENSOR = 0;
+char USE_HALL_SENSOR = 0; // eepromBuffer[39]：是否启用霍尔传感器（需硬件支持）
 uint16_t enter_sine_angle = 180;
 char do_once_sinemode = 0;
 //============================= Servo Settings ==============================
+// eepromBuffer[32]：Servo/PWM 低油门阈值（µs），实际值 = buf[32] * 2 + 750
 // 零油门数值,任何低于该值的油门都会认为是零,会留一定余量,比如1000~1100都是零油门
 // 上电时如果做了校准操作,这个值会改变
 uint16_t servo_low_threshold = 1100;
+// eepromBuffer[33]：Servo/PWM 高油门阈值（µs），实际值 = buf[33] * 2 + 1750
 // 满油门数值,同零油门数值
 uint16_t servo_high_threshold = 1900;
-uint16_t servo_neutral = 1500; // 支持双向功能时的分界值，小于该值、大于该值，旋转方向不一样
-uint8_t servo_dead_band = 100;
+uint16_t servo_neutral = 1500; // eepromBuffer[34]：双向模式下的中点位置（µs），实际值 = buf[34] + 1374；支持双向功能时的分界值，小于该值、大于该值，旋转方向不一样
+uint8_t servo_dead_band = 100; // eepromBuffer[35]：Servo/PWM 中点死区大小
 
 //========================= Battery Cuttoff Settings ========================
-char LOW_VOLTAGE_CUTOFF = 0;         // Turn Low Voltage CUTOFF on or off
-uint16_t low_cell_volt_cutoff = 330; // 3.3volts per cell
+char LOW_VOLTAGE_CUTOFF = 0;         // eepromBuffer[36]：低压截止功能开关（0=关闭，1=开启）
+uint16_t low_cell_volt_cutoff = 330; // eepromBuffer[37]：单节锂电池低压截止值（0.01V），实际值 = buf[37] + 250（2.5V~3.5V）
 
 //=========================== END EEPROM Defaults ===========================
 
@@ -324,7 +327,7 @@ uint8_t EEPROM_VERSION;
 // 关闭正弦启动，车模不需要平滑正弦启动
 // 最低占空比提高，低速大扭矩，防止熄火
 // 关闭卡转子保护，车模低速高负载不需要
-char RC_CAR_REVERSE = 0; // have to set bidirectional, comp_pwm off and stall protection off, no sinusoidal startup
+char RC_CAR_REVERSE = 0; // eepromBuffer[38]：攀爬车专用反向模式（需配合双向、关互补PWM、关失速保护、关正弦启动）
 
 uint16_t ADC_CCR = 30;
 uint16_t current_angle = 90;
@@ -371,7 +374,7 @@ int16_t actual_current = 0;
 
 char lowkv = 0;
 
-uint16_t min_startup_duty = 120; // 启动阶段的最小占空比，如果小于该数值，产生的扭矩不足以克服静摩擦和负载，电机可能会：抖动、发热、启动失败
+uint16_t min_startup_duty = 120; // eepromBuffer[25] 决定：启动阶段的最小占空比，如果小于该数值，产生的扭矩不足以克服静摩擦和负载，电机可能会：抖动、发热、启动失败
 
 uint16_t sin_mode_min_s_d = 120;
 char bemf_timeout = 10;
@@ -454,7 +457,7 @@ uint8_t changeover_step = 5;
 uint8_t filter_level = 5;
 uint8_t running = 0;
 uint16_t advance = 0;
-uint8_t advancedivisor = 6;
+uint8_t advancedivisor = 6; // 轮询操作执行换相时，固定10°进行换向
 char rising = 1;
 
 ////Space Vector PWM ////////////////
@@ -538,9 +541,9 @@ uint16_t input = 0;
 // 然后 main.c 再根据单向/双向/GIMBAL 模式把它转换成最终电机控制用的 adjusted_input。
 uint16_t newinput = 0;
 
-char inputSet = 0; // 0=未识别输入协议，1 = 已经识别输入协议（DShot / Servo PWM / CRSF / ADC 等）
-char dshot = 0;    // 当前输入信号协议是DShot 数字协议
-char servoPwm = 0;
+char inputSet = 0;     // 0=未识别输入协议，1 = 已经识别输入协议（DShot / Servo PWM / CRSF / ADC 等）
+char dshot = 0;        // eepromBuffer[46] 决定：是否为 DShot 数字协议输入
+char servoPwm = 0;     // eepromBuffer[46] 决定：是否为 Servo PWM 模拟输入
 uint32_t zero_crosses; // 累计检测到的 BEMF 过零点次数，用于判断是否进入稳定运行
 
 uint8_t zcfound = 0; // 过零发现标志位，如果为1，代表本轮已经检测到过零点，执行换向操作后清除
@@ -619,10 +622,13 @@ float doPidCalculations(struct fastPID *pidnow, int actual, int target)
     return pidnow->pid_output; // 返回 PID 计算结果
 }
 
+// 加载参数
 void loadEEpromSettings()
 {
+    // 从 Flash 模拟 EEPROM 读取 176 字节用户配置到 eepromBuffer
     read_flash_bin(eepromBuffer, EEPROM_START_ADD, 176);
 
+    // eepromBuffer[17]：电机转向反转（0x01=反转）
     if (eepromBuffer[17] == 0x01)
     {
         dir_reversed = 1;
@@ -631,6 +637,7 @@ void loadEEpromSettings()
     {
         dir_reversed = 0;
     }
+    // eepromBuffer[18]：双向旋转模式开关
     if (eepromBuffer[18] == 0x01)
     {
         bi_direction = 1;
@@ -639,11 +646,13 @@ void loadEEpromSettings()
     {
         bi_direction = 0;
     }
+    // eepromBuffer[19]：开环正弦启动开关
     if (eepromBuffer[19] == 0x01)
     {
         use_sin_start = 1;
         //	 min_startup_duty = sin_mode_min_s_d;
     }
+    // eepromBuffer[20]：互补 PWM / 同步整流开关
     if (eepromBuffer[20] == 0x01)
     {
         comp_pwm = 1;
@@ -652,6 +661,7 @@ void loadEEpromSettings()
     {
         comp_pwm = 0;
     }
+    // eepromBuffer[21]：可变 PWM 频率开关
     if (eepromBuffer[21] == 0x01)
     {
         VARIABLE_PWM = 1;
@@ -660,6 +670,7 @@ void loadEEpromSettings()
     {
         VARIABLE_PWM = 0;
     }
+    // eepromBuffer[22]：堵转保护开关
     if (eepromBuffer[22] == 0x01)
     {
         stuck_rotor_protection = 1;
@@ -668,6 +679,7 @@ void loadEEpromSettings()
     {
         stuck_rotor_protection = 0;
     }
+    // eepromBuffer[23]：换相提前角级别（0~3，每级约 7.5°）
     if (eepromBuffer[23] < 4)
     {
         advance_level = eepromBuffer[23];
@@ -677,6 +689,7 @@ void loadEEpromSettings()
         advance_level = 2; // * 7.5 increments
     }
 
+    // eepromBuffer[24]：PWM 载波频率设置（8~48，值越大频率越高）
     if (eepromBuffer[24] < 49 && eepromBuffer[24] > 7)
     {
         if (eepromBuffer[24] < 49 && eepromBuffer[24] > 23)
@@ -701,6 +714,7 @@ void loadEEpromSettings()
         TIM1->ARR = tim1_arr;
     }
 
+    // eepromBuffer[25]：启动占空比（50~150），决定启动时的最小驱动强度
     if (eepromBuffer[25] < 151 && eepromBuffer[25] > 49)
     {
         min_startup_duty = (eepromBuffer[25] + DEAD_TIME) * TIMER1_MAX_ARR / 2000;
@@ -712,8 +726,11 @@ void loadEEpromSettings()
         min_startup_duty = 150;
         minimum_duty_cycle = (min_startup_duty / 2) + 10;
     }
+    // eepromBuffer[26]：电机 KV 值（实际 KV = buf[26] * 40 + 20）
     motor_kv = (eepromBuffer[26] * 40) + 20;
+    // eepromBuffer[27]：电机磁极数
     motor_poles = eepromBuffer[27];
+    // eepromBuffer[28]：停止时主动刹车开关
     if (eepromBuffer[28] == 0x01)
     {
         brake_on_stop = 1;
@@ -722,6 +739,7 @@ void loadEEpromSettings()
     {
         brake_on_stop = 0;
     }
+    // eepromBuffer[29]：失速/防熄火保护开关
     if (eepromBuffer[29] == 0x01)
     {
         stall_protection = 1;
@@ -731,9 +749,11 @@ void loadEEpromSettings()
         stall_protection = 0;
     }
     setVolume(5);
+    // eepromBuffer[1]：EEPROM 布局版本号；后续高级配置只在版本 >=1 时加载
     if (eepromBuffer[1] > 0)
     { // these commands weren't introduced until eeprom version 1.
 
+        // eepromBuffer[30]：蜂鸣器/提示音音量（0~11）
         if (eepromBuffer[30] > 11)
         {
             setVolume(5);
@@ -742,6 +762,7 @@ void loadEEpromSettings()
         {
             setVolume(eepromBuffer[30]);
         }
+        // eepromBuffer[31]：是否按间隔自动发送 KISS 遥测
         if (eepromBuffer[31] == 0x01)
         {
             TLM_ON_INTERVAL = 1;
@@ -750,12 +771,17 @@ void loadEEpromSettings()
         {
             TLM_ON_INTERVAL = 0;
         }
+        // eepromBuffer[32]：Servo/PWM 低油门阈值（µs，实际值 = buf[32] * 2 + 750）
         servo_low_threshold = (eepromBuffer[32] * 2) + 750; // anything below this point considered 0
+        // eepromBuffer[33]：Servo/PWM 高油门阈值（µs，实际值 = buf[33] * 2 + 1750）
         servo_high_threshold = (eepromBuffer[33] * 2) + 1750;
         ; // anything above this point considered 2000 (max)
+        // eepromBuffer[34]：双向模式下的中点位置（µs，实际值 = buf[34] + 1374）
         servo_neutral = (eepromBuffer[34]) + 1374;
+        // eepromBuffer[35]：Servo/PWM 中点死区大小
         servo_dead_band = eepromBuffer[35];
 
+        // eepromBuffer[36]：低压截止功能开关
         if (eepromBuffer[36] == 0x01)
         {
             LOW_VOLTAGE_CUTOFF = 1;
@@ -765,7 +791,9 @@ void loadEEpromSettings()
             LOW_VOLTAGE_CUTOFF = 0;
         }
 
+        // eepromBuffer[37]：单节锂电池低压截止值（0.01V，实际值 = buf[37] + 250）
         low_cell_volt_cutoff = eepromBuffer[37] + 250; // 2.5 to 3.5 volts per cell range
+        // eepromBuffer[38]：攀爬车专用反向模式开关
         if (eepromBuffer[38] == 0x01)
         {
             RC_CAR_REVERSE = 1;
@@ -774,6 +802,7 @@ void loadEEpromSettings()
         {
             RC_CAR_REVERSE = 0;
         }
+        // eepromBuffer[39]：霍尔传感器开关（需硬件支持 HAS_HALL_SENSORS）
         if (eepromBuffer[39] == 0x01)
         {
 #ifdef HAS_HALL_SENSORS
@@ -786,15 +815,18 @@ void loadEEpromSettings()
         {
             USE_HALL_SENSOR = 0;
         }
+        // eepromBuffer[40]：正弦启动切换到 BEMF 闭环的油门百分比（5~25%）
         if (eepromBuffer[40] > 4 && eepromBuffer[40] < 26)
         { // sine mode changeover 5-25 percent throttle
             sine_mode_changeover_thottle_level = eepromBuffer[40];
         }
+        // eepromBuffer[41]：停止时拖刹强度（1~10）
         if (eepromBuffer[41] > 0 && eepromBuffer[41] < 11)
         { // drag brake 1-10
             drag_brake_strength = eepromBuffer[41];
         }
 
+        // eepromBuffer[42]：主动刹车强度（1~9），同时影响死区时间覆盖
         if (eepromBuffer[42] > 0 && eepromBuffer[42] < 10)
         { // motor brake 1-9
             driving_brake_strength = eepromBuffer[42];
@@ -810,21 +842,25 @@ void loadEEpromSettings()
             TIM1->BDTR |= dead_time_override;
         }
 
+        // eepromBuffer[43]：温度保护阈值（70~140°C）
         if (eepromBuffer[43] >= 70 && eepromBuffer[43] <= 140)
         {
             TEMPERATURE_LIMIT = eepromBuffer[43];
         }
 
+        // eepromBuffer[44]：电流限制值（1~99A，实际限制 = buf[44] * 2A）
         if (eepromBuffer[44] > 0 && eepromBuffer[44] < 100)
         {
             CURRENT_LIMIT = eepromBuffer[44] * 2;
             use_current_limit = 1;
         }
+        // eepromBuffer[45]：正弦启动阶段功率/强度（1~10）
         if (eepromBuffer[45] > 0 && eepromBuffer[45] < 11)
         {
             sine_mode_power = eepromBuffer[45];
         }
 
+        // eepromBuffer[46]：输入信号协议选择（AUTO/DSHOT/SERVO/SERIAL/EDTARM）
         if (eepromBuffer[46] >= 0 && eepromBuffer[46] < 10)
         {
             switch (eepromBuffer[46])
@@ -872,9 +908,9 @@ void loadEEpromSettings()
     }
 }
 
+// 保存参数
 void saveEEpromSettings()
 {
-
     eepromBuffer[1] = eeprom_layout_version;
     if (dir_reversed == 1)
     {
@@ -929,9 +965,9 @@ void saveEEpromSettings()
     save_flash_nolib(eepromBuffer, 176, EEPROM_START_ADD);
 }
 
+// 没有被调用
 void getSmoothedInput()
 {
-
     total = total - readings[readIndex];
     readings[readIndex] = commutation_interval;
     total = total + readings[readIndex];
@@ -943,6 +979,9 @@ void getSmoothedInput()
     smoothedinput = total / numReadings;
 }
 
+// 轮询方式检测 BEMF（反电动势）过零状态，并进行简单滤波
+// 非 F031 平台：通过比较器读取悬空相的 BEMF 电压，与中性点比较得到高低电平
+// 根据当前期望的过零方向（rising/falling）累计有效计数，连续多次不符合则清空计数
 void getBemfState()
 {
     uint8_t current_state = 0;
@@ -960,23 +999,27 @@ void getBemfState()
         current_state = PHASE_B_EXTI_PORT->IDR & PHASE_B_EXTI_PIN;
     }
 #else
+    // 读取当前激活比较器的输出电平，极性取反以匹配后续判断
     current_state = !LL_COMP_ReadOutputLevel(active_COMP); // polarity reversed
 #endif
+
+    // rising = 1：期望检测到上升沿过零，BEMF  comparator 输出应为高电平
     if (rising)
     {
         if (current_state)
         {
-            bemfcounter++;
+            bemfcounter++; // 连续检测到有效状态，过零可信度增加
         }
         else
         {
             bad_count++;
             if (bad_count > bad_count_threshold)
             {
-                bemfcounter = 0;
+                bemfcounter = 0; // 噪声/假过零过多，清空累计计数
             }
         }
     }
+    // rising = 0：期望检测到下降沿过零，BEMF comparator 输出应为低电平
     else
     {
         if (!current_state)
@@ -994,15 +1037,27 @@ void getBemfState()
     }
 }
 
+// 执行一次电机六步换相
+// 1. 记录本次过零到换相的间隔，并平滑得到 e_com_time
+// 2. 根据旋转方向推进/回退 step（1~6 循环）
+// 3. 按新的 step 输出三相驱动状态
+// 4. 切换比较器输入以检测下一次过零
+// 5. 低速或特殊模式下切回轮询模式
+// 6. 清零 BEMF 检测计数，为下一次过零做准备
+// 7. 若启用速度环，用 PID 调整 input_override
 void commutate()
 {
+    // 记录当前 step 对应的换相间隔（单位 0.5us）
     commutation_intervals[step - 1] = thiszctime;
+    // 对最近 6 个换相间隔求平均并平滑，得到 e_com_time，用于转速估算和速度环
+    // 不是很懂这个+4的作用
     e_com_time = ((commutation_intervals[0] + commutation_intervals[1] + commutation_intervals[2] + commutation_intervals[3] + commutation_intervals[4] + commutation_intervals[5]) + 4) >> 1; // COMMUTATION INTERVAL IS 0.5US INCREMENTS
 
     //	COM_TIMER->CNT = 0;
+    // 正转：step 递增 1~6 循环
     if (forward == 1)
     {
-        step++;
+        step++; // 进入下一个六步换相状态
         if (step > 6)
         {
             step = 1;
@@ -1010,15 +1065,16 @@ void commutate()
         }
         rising = step % 2; // 根据当前步数决定期望 BEMF 是上升沿还是下降沿
     }
+    // 反转：step 递减 6~1 循环
     else
     {
-        step--;
+        step--; // 进入下一个六步换相状态
         if (step < 1)
         {
             step = 6;
             desync_check = 1;
         }
-        rising = !(step % 2);
+        rising = !(step % 2); // 反转时 step 的奇偶性与正转相反，所以取反
     }
 
     if (!prop_brake_active)
@@ -1049,6 +1105,7 @@ void commutate()
         {
             input_override = 0;
         }
+        // 启动初期过零次数少，转速不稳定，清零速度环积分，避免积分饱和
         if (zero_crosses < 100)
         {
             speedPid.integral = 0;
@@ -1713,6 +1770,7 @@ void tenKhzRoutine() // 10KHz控制
 #endif
 }
 
+// 弦波启动，调整角度
 void advanceincrement()
 {
     if (!forward)
@@ -1762,13 +1820,28 @@ void advanceincrement()
 #endif
 }
 
+// 轮询模式（old_routine）下检测到 BEMF 过零点后执行的阻塞式换相流程
+// 1. 记录本次过零间隔
+// 2. 对换相间隔做低通滤波
+// 3. 计算换相提前角和等待时间
+// 4. 延时后执行 commutate() 换相
+// 5. 累计过零次数，稳定后切回比较器中断模式
 void zcfoundroutine()
-{ // only used in polling mode, blocking routine.
+{
+    // 记录从上一次过零/换相到现在的时间间隔（两次过零之间对应 60° 电角度）
     thiszctime = INTERVAL_TIMER->CNT;
     INTERVAL_TIMER->CNT = 0;
+
+    // 一阶低通滤波：新间隔 = 25% 本次实测 + 75% 上一次平滑值，减少抖动
     commutation_interval = (thiszctime + (3 * commutation_interval)) / 4;
+
+    // 计算提前角：用于补偿中断、比较器、软件执行等延迟
     advance = commutation_interval / advancedivisor;
+
+    // 理论延时 = 过零到换相的 30°（commutation_interval / 2），再减去提前量
     waitTime = commutation_interval / 2 - advance;
+
+    // 忙等待到换相时刻；启动初期（zero_crosses < 10）不等待，直接换相帮助电机拉起
     while (INTERVAL_TIMER->CNT < waitTime)
     {
         if (zero_crosses < 10)
@@ -1776,13 +1849,21 @@ void zcfoundroutine()
             break;
         }
     }
+
+    // 执行六步换相，推进 step、切换比较器输入、清零 BEMF 计数
     commutate();
+
+    // 清零 BEMF 检测计数器，为下一次过零检测做准备
     bemfcounter = 0;
     bad_count = 0;
 
+    // 累计成功过零次数
     zero_crosses++;
+
+    // 电机运行稳定后，从轮询模式切回硬件比较器中断模式
     if (stall_protection || RC_CAR_REVERSE)
     {
+        // 车模/防熄火模式：过零 20 次以上且转速足够快（commutation_interval <= 2000，约 1ms/60°）
         if (zero_crosses >= 20 && commutation_interval <= 2000)
         {
             old_routine = 0;
@@ -1791,6 +1872,7 @@ void zcfoundroutine()
     }
     else
     {
+        // 普通模式：连续过零 30 次以上认为稳定
         if (zero_crosses > 30)
         {
             old_routine = 0;
