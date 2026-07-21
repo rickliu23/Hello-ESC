@@ -87,6 +87,7 @@
 COMP_TypeDef* active_COMP = COMP2;
 uint32_t current_EXTI_LINE = LL_EXTI_LINE_18;
 
+// 屏蔽 BEMF 比较器产生的相位中断
 void maskPhaseInterrupts(){
 	EXTI->IMR1 &= ~(1 << 18);
 	LL_EXTI_ClearRisingFlag_0_31(LL_EXTI_LINE_18);

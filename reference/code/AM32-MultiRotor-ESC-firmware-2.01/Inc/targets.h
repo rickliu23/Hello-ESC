@@ -504,9 +504,9 @@
 #define USE_TIMER_15_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_2
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM15
-#define IC_TIMER_POINTER htim15
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM15             // 输入捕获定时器
+#define IC_TIMER_POINTER htim15             // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_5
 #define DMA_HANDLE_TYPE_DEF hdma_tim15_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -538,9 +538,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_4
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -572,9 +572,9 @@
 #define USE_TIMER_15_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_2
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM15
-#define IC_TIMER_POINTER htim15
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM15             // 输入捕获定时器
+#define IC_TIMER_POINTER htim15             // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_5
 #define DMA_HANDLE_TYPE_DEF hdma_tim15_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -606,9 +606,9 @@
 #define USE_TIMER_15_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_2
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM15
-#define IC_TIMER_POINTER htim15
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM15             // 输入捕获定时器
+#define IC_TIMER_POINTER htim15             // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_5
 #define DMA_HANDLE_TYPE_DEF hdma_tim15_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -640,9 +640,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_4
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -674,9 +674,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_4
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -713,9 +713,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_4
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
 #define IC_DMA_IRQ_NAME DMA1_Channel4_5_IRQn
@@ -746,12 +746,15 @@
 #ifdef HARDWARE_GROUP_G0_A
 
 #define MCU_G071
+
 #define USE_TIMER_3_CHANNEL_1
+
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -786,9 +789,9 @@
 
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -824,9 +827,9 @@
 
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -862,9 +865,9 @@
 
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -896,9 +899,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -932,9 +935,9 @@
 #define USE_TIMER_16_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_6
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM16
-#define IC_TIMER_POINTER htim16
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM16             // 输入捕获定时器
+#define IC_TIMER_POINTER htim16             // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim16_ch1
@@ -983,9 +986,9 @@
 #define USE_TIMER_16_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_6
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM16
-#define IC_TIMER_POINTER htim16
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM16             // 输入捕获定时器
+#define IC_TIMER_POINTER htim16             // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim16_ch1
@@ -1034,9 +1037,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -1075,9 +1078,9 @@
 #define USE_TIMER_3_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_4
 #define INPUT_PIN_PORT GPIOB
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM3
-#define IC_TIMER_POINTER htim3
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM3              // 输入捕获定时器
+#define IC_TIMER_POINTER htim3              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim3_ch1
@@ -1120,9 +1123,9 @@
 
 #define INPUT_PIN LL_GPIO_PIN_2
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH3
-#define IC_TIMER_REGISTER TIM2
-#define IC_TIMER_POINTER htim2
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH3 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM2              // 输入捕获定时器
+#define IC_TIMER_POINTER htim2              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim2_ch3
@@ -1182,9 +1185,9 @@
 
 #define USE_TIMER_2_CHANNEL_3
 #define INPUT_PIN LL_GPIO_PIN_2
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH3
-#define IC_TIMER_REGISTER TIM2
-#define IC_TIMER_POINTER htim2
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH3 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM2              // 输入捕获定时器
+#define IC_TIMER_POINTER htim2              // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_1
 #define DMA_HANDLE_TYPE_DEF hdma_tim2_ch3
@@ -1246,9 +1249,9 @@
 #define USE_TIMER_15_CHANNEL_1
 #define INPUT_PIN LL_GPIO_PIN_2
 #define INPUT_PIN_PORT GPIOA
-#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1
-#define IC_TIMER_REGISTER TIM15
-#define IC_TIMER_POINTER htim15
+#define IC_TIMER_CHANNEL LL_TIM_CHANNEL_CH1 // 输入捕获通道：接收 DShot / Servo PWM / CRSF 信号
+#define IC_TIMER_REGISTER TIM15             // 输入捕获定时器
+#define IC_TIMER_POINTER htim15             // 输入捕获定时器 HAL 句柄
 
 #define INPUT_DMA_CHANNEL LL_DMA_CHANNEL_5
 #define DMA_HANDLE_TYPE_DEF hdma_tim15_ch1
@@ -1347,10 +1350,10 @@
 #else
 #define EEPROM_START_ADD (uint32_t)0x0801F800
 #endif
-#define INTERVAL_TIMER TIM2 // 测量换相间隔、BEMF 时间
-#define TEN_KHZ_TIMER TIM6	// 10KHz控制周期用
+#define INTERVAL_TIMER TIM2 // 正常时,检测换向间隔, 如果异常,用来判断换向超时
+#define TEN_KHZ_TIMER TIM6  // 10KHz控制周期用
 #define UTILITY_TIMER TIM17 // 延时用
-#define COM_TIMER TIM14		// 用来计算换相延时
+#define COM_TIMER TIM14     // 用来计算换相延时,检测到过零点后,过一段时间再执行换向操作
 #define TIM1_AUTORELOAD 2667
 #define APPLICATION_ADDRESS 0x08001000
 #define MAIN_COMP COMP2 // // BEMF（反电动势）过零检测。

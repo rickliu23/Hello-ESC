@@ -457,7 +457,7 @@ uint8_t changeover_step = 5;
 uint8_t filter_level = 5;
 uint8_t running = 0;
 uint16_t advance = 0;
-uint8_t advancedivisor = 6; // 轮询操作执行换相时，固定10°进行换向
+uint8_t advancedivisor = 6; // 轮询操作执行换相时，固定60°/6=10°进行换向
 char rising = 1;
 
 ////Space Vector PWM ////////////////
@@ -515,11 +515,11 @@ int16_t phase_A_position;
 int16_t phase_B_position;
 int16_t phase_C_position;
 uint16_t step_delay = 100;
-char stepper_sine = 0;
+char stepper_sine = 0; // 表示当前的模式,0:六步换向, 1:正弦启动
 char forward = 1;
 uint16_t gate_drive_offset = DEAD_TIME;
 
-uint8_t stuckcounter = 0;
+uint8_t stuckcounter = 0; // 主循环中清零,中断内累加+判断阈值,如果大于阈值,代表主循环已经卡死
 uint16_t k_erpm;
 uint16_t e_rpm; // electrical revolution /100 so,  123 is 12300 erpm
 
@@ -1955,8 +1955,8 @@ int main(void)
 
     initCorePeripherals(); // 外设初始化
 
-    /* 打开 TIM1 通道 的输出开关
-    让 各个Channel 开始输出 PWM 波形。*/
+    // 使能TIM1的波形输出
+    // 只是使能外设,如果输出到IO的通路没打开,IO上是没有波形的
     LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
     LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
     LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
@@ -1965,21 +1965,24 @@ int main(void)
     LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
 
     // 消隐定时器
+    // 无感 BLDC 换相时，MOSFET 开关会在悬空相上产生尖峰噪声。如果比较器在这个时候检测电压，很容易把噪声误判为 BEMF 过零点。
+    // 每次换相后，需要 屏蔽比较器一段时间，等噪声过去再重新检测过零
+    // 屏蔽比较器的这一段时间,就叫 消隐时间（blanking time）
     LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH5);
 
     //  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH4);      // timer used for timing adc read
     //  TIM1->CCR4 = 100;  // set in 10khz loop to match pwm cycle timed to end of pwm on
 
-    /* 	启动定时器计数
-    这个执行的先后顺序和MCU有关，最终目的是让引脚上输出 PWM */
+    // 定时器开始计数
     LL_TIM_EnableCounter(TIM1);
+    // 允许输出到IO上
     LL_TIM_EnableAllOutputs(TIM1);
 
     /* 手动刷新一次 TIM1 的所有预装载值，并让计数器从 0 重新开始计数，确保 PWM 初始化后的状态正确、同步。 */
     LL_TIM_GenerateEvent_UPDATE(TIM1);
     // LL_TIM_EnableIT_UPDATE(TIM1);
 
-    // 飞控油门信号接收，PWM或者数字编码信号，具体取决于使用的协议格式
+    // 飞控油门信号接收，具体内容取决于使用的协议格式
     LL_TIM_CC_EnableChannel(IC_TIMER_REGISTER, IC_TIMER_CHANNEL);
     LL_TIM_EnableCounter(IC_TIMER_REGISTER);
 
@@ -2002,12 +2005,15 @@ int main(void)
     COM_TIMER->DIER &= ~((0x1UL << (0U))); // 先关闭更新中断。检测到过零时打开，过零一段时间后再换向
 #endif
 
+    // 专门给延时用的定时器
     LL_TIM_EnableCounter(UTILITY_TIMER);
     LL_TIM_GenerateEvent_UPDATE(UTILITY_TIMER);
 
+    // 检测换向间隔
     LL_TIM_EnableCounter(INTERVAL_TIMER);
     LL_TIM_GenerateEvent_UPDATE(INTERVAL_TIMER);
 
+    // 10KHz控制周期
     LL_TIM_EnableCounter(TEN_KHZ_TIMER); // 10khz timer
     LL_TIM_GenerateEvent_UPDATE(TEN_KHZ_TIMER);
     TEN_KHZ_TIMER->DIER |= (0x1UL << (0U)); // 启用中断
@@ -2103,7 +2109,7 @@ int main(void)
         min_startup_duty = min_startup_duty + 50;
     }
 
-#ifdef USE_CRSF_INPUT
+#ifdef USE_CRSF_INPUT // 启用 CRSF 串口遥控协议作为输入源,G071用不到
     inputSet = 1;
     playStartupTune();
     MX_IWDG_Init();
@@ -2141,18 +2147,18 @@ int main(void)
     MX_IWDG_Init();
     LL_IWDG_ReloadCounter(IWDG);
 
-#ifdef GIMBAL_MODE
+#ifdef GIMBAL_MODE // 输入不再控制转速，而是控制 目标角度。电机像步进电机一样，一步一步转到目标位置
     bi_direction = 1;
     use_sin_start = 1;
 #endif
 
-#ifdef USE_ADC_INPUT
+#ifdef USE_ADC_INPUT //  用 ADC 采到的电压数值作为油门输入源
     armed_count_threshold = 5000;
     inputSet = 1;
-#else
-    /* 可能是外部刷写工具要更新固件
-    可能是飞控未启动
-    可能是信号线接错 */
+#else                // 用DShot\Servo PWM之类的协议命令作为油门输入源
+    // 可能是外部刷写工具要更新固件
+    // 可能是飞控未启动
+    // 可能是信号线接错
     checkForHighSignal(); // will reboot if signal line is high for 10ms
 
     receiveDshotDma(); // 接收飞控发过来的命令
@@ -2205,8 +2211,7 @@ int main(void)
             // 重新开始ADC采样
             LL_ADC_REG_StartConversion(ADC1);
 
-            // 低压截止保护 功能：当电池电压过低时，自动关闭电机，防止电池过放损坏。
-            // 用户可配置参数
+            // 如果开启了"低压截止保护"功能：当电池电压过低时，自动关闭电机，防止电池过放损坏。
             if (LOW_VOLTAGE_CUTOFF)
             {
                 // 电池电压低于每节电池的截止电压乘以电池数量时，增加低电压计数器。
@@ -2258,7 +2263,7 @@ int main(void)
         stuckcounter = 0;
 
         // 双向旋转模式，非DSHOT模式（DSHOT是数据命令接收模式）
-        if (bi_direction == 1 && dshot == 0)
+        if (dshot == 0 && bi_direction)
         {
             if (RC_CAR_REVERSE) // 给攀爬车准备的
             {
@@ -2384,7 +2389,6 @@ int main(void)
         {
             if (newinput > 1047) // 正转
             {
-
                 if (forward == dir_reversed)
                 {
                     if (commutation_interval > reverse_speed_threshold || stepper_sine)
@@ -2438,8 +2442,8 @@ int main(void)
 #ifndef BRUSHED_MODE
         if ((zero_crosses > 1000) || (adjusted_input == 0))
         {
-            /* 电机已经成功检测了很多次过零点，说明运行稳定。之前累计的超时计数可能是偶发噪声，清零 */
-            /* 油门为 0，电机本来就在停转或自由滑行，没有 BEMF 是正常的，不算故障 */
+            // 电机已经成功检测了很多次过零点，说明运行稳定。之前累计的超时计数可能是偶发噪声，清零
+            // 油门为 0，电机本来就在停转或自由滑行，没有 BEMF 是正常的，不算故障
             bemf_timeout_happened = 0;
 
 #ifdef USE_RGB_LED
@@ -2451,16 +2455,18 @@ int main(void)
             }
 #endif
         }
+
         if (zero_crosses > 100 && adjusted_input < 200)
         {
-            /* 经成功检测了一些过零点（zero_crosses > 100），但油门很低（adjusted_input < 200）
-               低转速时 BEMF 信号弱，容易误报超时，所以清零。 */
+            // 经成功检测了一些过零点（zero_crosses > 100），但油门很低（adjusted_input < 200）
+            // 低转速时 BEMF 信号弱，容易误报超时，所以清零
             bemf_timeout_happened = 0;
         }
+
         if (use_sin_start && adjusted_input < 160)
         {
-            /* 正在使用正弦启动（开环拖动），此时根本不走 BEMF 检测流程。
-               低油门下更不需要判断 BEMF 超时 */
+            // 正弦启动（开环拖动） && 低油门下
+            // 不需要判断 BEMF 超时
             bemf_timeout_happened = 0;
         }
 
@@ -2468,18 +2474,19 @@ int main(void)
         {
             if (adjusted_input < 400)
             {
-                /* 爬行模式下车速极慢，电机转速很低，BEMF 信号非常弱甚至断断续续。
-                   这种情况下很容易发生 BEMF 超时，但其实电机并没有卡死，只是在慢慢爬。
-                   所以低油门时（adjusted_input < 400），直接把超时计数器清零，不触发任何保护。 */
+                // 爬行模式 + 低油门，电机转速很低
+                // 这种情况下很容易发生 BEMF 超时，但其实电机并没有卡死，只是在慢慢爬。
+                // 所以低油门时（adjusted_input < 400），直接把超时计数器清零，不触发任何保护。
                 bemf_timeout_happened = 0;
             }
         }
         else
         {
-            /* 这里调整的是超时阈值 */
+            // 这里调整的是超时阈值
             if (adjusted_input < 150)
             {
-                /* 启动时占空比很低，电机慢慢加速，BEMF 弱是正常的。把阈值放宽到 100，避免启动阶段就误触发保护。 */
+                // 低油门,电机转速低,
+                // BEMF出现超时是正常情况。把阈值放宽到 100，避免启动阶段就误触发保护。
                 bemf_timeout = 100;
             }
             else
@@ -2488,7 +2495,7 @@ int main(void)
             }
         }
 
-        /* 当连续检测不到反电动势过零点的时间超过阈值 && 开启了“转子卡死保护”功能 */
+        // 当连续检测不到反电动势过零点的时间超过阈值 && 开启了“转子卡死保护”功能
         if (bemf_timeout_happened > bemf_timeout * (1 + (crawler_mode * 100)) && stuck_rotor_protection)
         {
             allOff();                    // 关闭所有 MOSFET，停止驱动电机
@@ -2515,7 +2522,9 @@ int main(void)
                     input = 0;
                 }
 
-                // 正弦启动阶段，把油门输入映射成一个较低的范围，给电机一个温和的启动过程，保护电机和电调，适合需要平稳启动的应用，例如车模、机械臂等。
+                // 正弦启动阶段，把油门输入映射成一个较低的范围
+                // 给电机一个温和的启动过程，保护电机和电调
+                // 适合需要平稳启动的应用，例如车模、机械臂等。
                 if (adjusted_input > 30 && adjusted_input < (sine_mode_changeover_thottle_level * 20))
                 {
                     input = map(adjusted_input, 30, (sine_mode_changeover_thottle_level * 20), 47, 160);
@@ -2529,13 +2538,13 @@ int main(void)
             }
             else
             {
-                /* 速度控制环总开关。
-                   当它开启时，ESC 不再直接把 adjusted_input 当油门
-                   而是用 PID 计算一个油门修正量 input_override，再用它驱动电机 */
+                // 速度控制环总开关。
+                // 当它开启时，ESC 不再直接把 adjusted_input 当油门
+                // 而是用 PID 计算一个油门修正量 input_override，再用它驱动电机
                 if (use_speed_control_loop)
                 {
-                    /* “按转速驱动”模式，也就是把油门输入映射成目标电机转速，ESC 自动用 PID 调节占空比来维持这个转速
-                       适合需要精确控制转速的应用，例如风扇、水泵等 */
+                    // “按转速驱动”模式，也就是把油门输入映射成目标电机转速，ESC 自动用 PID 调节占空比来维持这个转速
+                    // 适合需要精确控制转速的应用，例如风扇、水泵等
                     if (drive_by_rpm)
                     {
                         // 计算电气换相周期
