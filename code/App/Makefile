@@ -73,17 +73,12 @@ ASMM_SOURCES =
 PREFIX = arm-none-eabi-
 # The gcc compiler bin path can be either defined in make command via GCC_PATH variable (> make GCC_PATH=xxx)
 # either it can be added to the PATH environment variable.
-ifdef GCC_PATH
+# Default to the ARM toolchain installed under C:\toolChain (used by this project).
+GCC_PATH ?= C:/toolChain/arm-gnu-toolchain-15.3.rel1-mingw-w64-x86_64-arm-none-eabi/bin
 CC = $(GCC_PATH)/$(PREFIX)gcc
 AS = $(GCC_PATH)/$(PREFIX)gcc -x assembler-with-cpp
 CP = $(GCC_PATH)/$(PREFIX)objcopy
 SZ = $(GCC_PATH)/$(PREFIX)size
-else
-CC = $(PREFIX)gcc
-AS = $(PREFIX)gcc -x assembler-with-cpp
-CP = $(PREFIX)objcopy
-SZ = $(PREFIX)size
-endif
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
  
@@ -149,6 +144,14 @@ LIBS = -lc -lm -lnosys
 LIBDIR = 
 LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
+#######################################
+# OpenOCD flashing
+#######################################
+OPENOCD_PATH ?= C:/toolChain/xpack-openocd-0.12.0-7-win32-x64/bin
+OPENOCD = $(OPENOCD_PATH)/openocd
+OPENOCD_INTERFACE = interface/stlink.cfg
+OPENOCD_TARGET = target/stm32g0x.cfg
+
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
 
@@ -185,6 +188,25 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	
 $(BUILD_DIR):
 	mkdir $@		
+
+#######################################
+# download / flash via OpenOCD + ST-Link
+#######################################
+# Alias: download is the same as flash
+download: flash
+
+flash: $(BUILD_DIR)/$(TARGET).elf
+	$(OPENOCD) -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c "program $< verify reset exit"
+
+erase:
+	$(OPENOCD) -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c "init; halt; stm32g0x mass_erase 0; reset; exit"
+
+reset:
+	$(OPENOCD) -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c "init; reset; exit"
+
+# Start OpenOCD as GDB server on port 3333
+debug-server: $(BUILD_DIR)/$(TARGET).elf
+	$(OPENOCD) -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET)
 
 #######################################
 # clean up
