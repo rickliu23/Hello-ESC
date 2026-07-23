@@ -1,0 +1,36 @@
+name: Build Firmware
+
+on:
+  push:
+    paths:
+      - 'code/App/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ARM GCC toolchain
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '15.3.Rel1'
+
+      - name: Build
+        working-directory: code/App
+        run: |
+          make clean
+          make -j"$(nproc)" GCC_PATH="$(dirname "$(which arm-none-eabi-gcc)")"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hello-ESC-firmware
+          path: |
+            code/App/build/Hello-ESC.elf
+            code/App/build/Hello-ESC.hex
+            code/App/build/Hello-ESC.bin
+          if-no-files-found: error
