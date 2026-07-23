@@ -23,7 +23,7 @@ jobs:
         working-directory: code/App
         run: |
           make clean
-          make -j"$(nproc)" GCC_PATH="$(dirname "$(which arm-none-eabi-gcc)")"
+          make -j"$(nproc)"
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
